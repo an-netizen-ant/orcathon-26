@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { REAL_IMAGERY } from '../constants/imagery';
 
 /**
  * SatelliteScene Component
  * Renders multispectral satellite imagery for all 8 verified earth observation case studies.
- * Supports Before/After states, spectral modes, thumbnail mode, and change-mask overlay.
+ * Supports Before/After states, spectral modes, thumbnail mode, change-mask overlay, and demo image loading fallbacks.
  */
 
 // ── Outer SVG wrapper — declared outside of SatelliteScene to avoid lint warning ──
-function SceneSvg({ children, viewBox = '0 0 1000 650', className, showMask, maskOpacity }) {
+function SceneSvg({ children, viewBox = '0 0 1000 650', className, showMask, maskOpacity, anomalies = [] }) {
   return (
     <div className="relative w-full h-full">
       <svg
@@ -20,12 +21,39 @@ function SceneSvg({ children, viewBox = '0 0 1000 650', className, showMask, mas
       </svg>
       {showMask && (
         <div
-          className="absolute inset-0 pointer-events-none mix-blend-screen"
-          style={{ opacity: Math.max(0, Math.min(1, maskOpacity * 0.5)) }}
+          className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
+          style={{ opacity: Math.max(0, Math.min(1, maskOpacity * 0.6)) }}
         >
-          <div className="absolute rounded" style={{ left: '16%', top: '18%', width: '28%', height: '34%', background: 'rgba(239,68,68,0.55)' }} />
-          <div className="absolute rounded" style={{ left: '50%', top: '12%', width: '24%', height: '32%', background: 'rgba(245,158,11,0.45)' }} />
-          <div className="absolute rounded" style={{ left: '60%', top: '52%', width: '26%', height: '34%', background: 'rgba(239,68,68,0.4)' }} />
+          {anomalies && anomalies.length > 0 ? (
+            anomalies.map((a) => {
+              const isCrit = a.severity === 'CRITICAL';
+              const isHigh = a.severity === 'HIGH';
+              const bg = isCrit
+                ? 'radial-gradient(ellipse at center, rgba(239,68,68,0.7) 0%, rgba(239,68,68,0.2) 65%, transparent 100%)'
+                : isHigh
+                ? 'radial-gradient(ellipse at center, rgba(249,115,22,0.65) 0%, rgba(249,115,22,0.2) 65%, transparent 100%)'
+                : 'radial-gradient(ellipse at center, rgba(245,158,11,0.6) 0%, rgba(245,158,11,0.15) 65%, transparent 100%)';
+              return (
+                <div
+                  key={a.id}
+                  className="absolute rounded-lg filter blur-[3px]"
+                  style={{
+                    left: `${a.box.x}%`,
+                    top: `${a.box.y}%`,
+                    width: `${a.box.width}%`,
+                    height: `${a.box.height}%`,
+                    background: bg,
+                  }}
+                />
+              );
+            })
+          ) : (
+            <>
+              <div className="absolute rounded" style={{ left: '16%', top: '18%', width: '28%', height: '34%', background: 'rgba(239,68,68,0.55)' }} />
+              <div className="absolute rounded" style={{ left: '50%', top: '12%', width: '24%', height: '32%', background: 'rgba(245,158,11,0.45)' }} />
+              <div className="absolute rounded" style={{ left: '60%', top: '52%', width: '26%', height: '34%', background: 'rgba(239,68,68,0.4)' }} />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -41,16 +69,85 @@ export function SatelliteScene({
   thumbnail = false,
   showChangeMask = false,
   changeMaskOpacity = 0.85,
+  anomalies = [],
 }) {
+  const [failedKeys, setFailedKeys] = useState({});
+  const imgKey = `${scenarioId}-${isAfter ? 'a' : 'b'}`;
+  const imgError = Boolean(failedKeys[imgKey]);
+
   const uid = `${scenarioId}-${isAfter ? 'a' : 'b'}-${thumbnail ? 't' : 'f'}`;
   const isDiff = comparisonMode === 'difference' || spectralMode === 'diff';
   const isCir = spectralMode === 'cir';
   const showMask = showChangeMask && isAfter;
 
+  // ── 0. DEMO SATELLITE RASTER IMAGERY WITH ERROR FALLBACK ──────────────────
+  if (!imgError && REAL_IMAGERY[scenarioId]) {
+    const imgSrc = isAfter ? REAL_IMAGERY[scenarioId].after : REAL_IMAGERY[scenarioId].before;
+    let filterStyle = 'none';
+    if (isDiff) {
+      filterStyle = 'contrast(1.6) saturate(0.2) brightness(0.85)';
+    } else if (isCir) {
+      filterStyle = 'hue-rotate(185deg) saturate(2.4) contrast(1.2)';
+    } else if (spectralMode === 'ndvi') {
+      filterStyle = 'hue-rotate(90deg) saturate(2.5) contrast(1.35)';
+    }
+
+    return (
+      <div className={`relative w-full h-full overflow-hidden bg-space-950 ${className}`}>
+        <img
+          key={imgKey}
+          src={imgSrc}
+          alt={`${scenarioId} ${isAfter ? 'after' : 'before'} demo`}
+          className="w-full h-full object-cover select-none pointer-events-none"
+          style={{ filter: filterStyle, transition: 'filter 0.3s ease' }}
+          loading={thumbnail ? 'lazy' : 'eager'}
+          onError={() => setFailedKeys((prev) => ({ ...prev, [imgKey]: true }))}
+        />
+
+        {/* Change mask overlay for raster imagery */}
+        {showMask && (
+          <div
+            className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
+            style={{ opacity: Math.max(0, Math.min(1, changeMaskOpacity * 0.7)) }}
+          >
+            {anomalies && anomalies.length > 0 ? (
+              anomalies.map((a) => {
+                const isCrit = a.severity === 'CRITICAL';
+                const isHigh = a.severity === 'HIGH';
+                const bg = isCrit
+                  ? 'radial-gradient(ellipse at center, rgba(239,68,68,0.75) 0%, rgba(239,68,68,0.2) 65%, transparent 100%)'
+                  : isHigh
+                  ? 'radial-gradient(ellipse at center, rgba(249,115,22,0.7) 0%, rgba(249,115,22,0.2) 65%, transparent 100%)'
+                  : 'radial-gradient(ellipse at center, rgba(245,158,11,0.65) 0%, rgba(245,158,11,0.15) 65%, transparent 100%)';
+                return (
+                  <div
+                    key={a.id}
+                    className="absolute rounded-lg filter blur-[3px]"
+                    style={{
+                      left: `${a.box.x}%`,
+                      top: `${a.box.y}%`,
+                      width: `${a.box.width}%`,
+                      height: `${a.box.height}%`,
+                      background: bg,
+                      boxShadow: isCrit ? '0 0 20px rgba(239,68,68,0.4)' : '0 0 16px rgba(249,115,22,0.3)',
+                    }}
+                  />
+                );
+              })
+            ) : null}
+          </div>
+        )}
+
+
+      </div>
+    );
+  }
+
   const wrapperProps = {
     className,
     showMask,
     maskOpacity: changeMaskOpacity,
+    anomalies,
   };
 
   // ── 1. AMAZON DEFORESTATION ──────────────────────────────────────────────

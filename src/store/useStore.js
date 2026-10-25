@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { LogicEngine } from '../utils/logicEngine';
+import { SCENARIO_IMAGERY } from '../constants/imagery';
 
 /**
  * 8 Verified Earth Observation Case-Study Presets
  * Each dataset maintains verified sensor provenance, temporal dates, and anomaly ground truth.
+ * Paired with illustrative demo raster imagery assets.
  */
-export const CASE_STUDIES = [
+const RAW_CASE_STUDIES = [
   {
     id: 'amazon',
     title: 'Amazon Deforestation',
@@ -660,6 +662,16 @@ export const CASE_STUDIES = [
   },
 ];
 
+export const CASE_STUDIES = RAW_CASE_STUDIES
+  .filter(cs => ['amazon', 'dubai', 'glacier'].includes(cs.id))
+  .map(cs => ({
+    ...cs,
+    imageryBefore: SCENARIO_IMAGERY[cs.id]?.before || `/imagery/${cs.id}-before.jpg`,
+    imageryAfter: SCENARIO_IMAGERY[cs.id]?.after || `/imagery/${cs.id}-after.jpg`,
+    imageryLabel: SCENARIO_IMAGERY[cs.id]?.label || `${cs.title} (Demo Imagery)`,
+    isDemoImagery: true,
+  }));
+
 export const useStore = create((set, get) => ({
   // 8 Case Studies
   scenarios: CASE_STUDIES,
@@ -679,7 +691,7 @@ export const useStore = create((set, get) => ({
   // Visualization options
   spectralMode: 'rgb', // 'rgb' | 'cir' | 'ndvi' | 'diff'
   showHUD: true,
-  audioEnabled: false,
+  audioEnabled: true,
 
   // Multi-Stage Orbital Timeline State
   currentStage: 1, // 1: Orbital Zoom In, 2: Scanner Laser Wipe, 3: HUD Report & Detach
@@ -748,15 +760,21 @@ export const useStore = create((set, get) => ({
 
   toggleHUD: () => {
     set((state) => ({ showHUD: !state.showHUD }));
-    get().playAudioFx('click');
+    get().playAudioFx('control');
   },
 
   toggleAudio: () => {
-    set((state) => ({ audioEnabled: !state.audioEnabled }));
+    const next = !get().audioEnabled;
+    set({ audioEnabled: next });
+    if (next) {
+      setTimeout(() => get().playAudioFx('lock'), 30);
+    }
   },
 
   toggleAutoSweep: () => {
-    set((state) => ({ isAutoSweeping: !state.isAutoSweeping }));
+    const next = !get().isAutoSweeping;
+    set({ isAutoSweeping: next });
+    get().playAudioFx(next ? 'switch' : 'control');
   },
 
   // Computed Selectors
@@ -804,73 +822,180 @@ export const useStore = create((set, get) => ({
     return filtered[0] || scenario.anomalies[0] || null;
   },
 
-  // Lightweight Web Audio API Telemetry Sound Effects
+  getActiveImagery: () => {
+    const sc = get().getActiveScenario();
+    return {
+      before: sc.imageryBefore,
+      after: sc.imageryAfter,
+      label: sc.imageryLabel,
+      isDemoImagery: true,
+    };
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Premium Aerospace Acoustic Engine (Web Audio API)
+  // Tuned for warm, satisfying, tactile haptic chimes and bell-like confirmations
+  // ══════════════════════════════════════════════════════════════════════════
   playAudioFx: (type) => {
     if (!get().audioEnabled) return;
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!window._orbitDiffAudioCtx) {
+        window._orbitDiffAudioCtx = new AudioCtx();
+      }
+      const ctx = window._orbitDiffAudioCtx;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
 
-      if (type === 'lock') {
-        const osc1 = ctx.createOscillator();
-        const osc2 = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc1.type = 'sine';
-        osc2.type = 'sine';
-        osc1.frequency.setValueAtTime(880, ctx.currentTime);
-        osc1.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.08);
-        osc2.frequency.setValueAtTime(1320, ctx.currentTime + 0.08);
-        osc2.frequency.exponentialRampToValueAtTime(2640, ctx.currentTime + 0.16);
+      const t = ctx.currentTime;
 
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-
-        osc1.connect(gain);
-        osc2.connect(gain);
-        gain.connect(ctx.destination);
-        osc1.start();
-        osc2.start(ctx.currentTime + 0.08);
-        osc1.stop(ctx.currentTime + 0.08);
-        osc2.stop(ctx.currentTime + 0.2);
-      } else if (type === 'control') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(540, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(360, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.15);
-      } else if (type === 'switch') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(320, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(960, ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.04, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.14);
-      } else {
+      // 1. Tactile UI Tap / Click — Soft warm haptic bubble pop (zero harshness)
+      if (type === 'click' || type === 'tap') {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, ctx.currentTime);
-        gain.gain.setValueAtTime(0.03, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+        // Gentle pitch drop feels like a physical mechanical bubble
+        osc.frequency.setValueAtTime(420, t);
+        osc.frequency.exponentialRampToValueAtTime(180, t + 0.045);
+
+        gain.gain.setValueAtTime(0.045, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.04);
+        osc.start(t);
+        osc.stop(t + 0.055);
+      }
+      // 2. Command Menu Open — Futuristic uplifting aerospace shimmer
+      else if (type === 'menu' || type === 'open') {
+        const chord = [622.25, 932.33, 1244.5]; // Eb5, Bb5, Eb6
+        chord.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t + i * 0.025);
+
+          const start = t + i * 0.025;
+          const dur = 0.22 - i * 0.03;
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.035 / (i + 1), start + 0.012);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + dur + 0.02);
+        });
+      }
+      // 3. Command Menu Close — Soft warm acoustic dismiss
+      else if (type === 'close') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(480, t);
+        osc.frequency.exponentialRampToValueAtTime(260, t + 0.06);
+
+        gain.gain.setValueAtTime(0.03, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.065);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.07);
+      }
+      // 4. Target Anomaly Lock — Pristine crystalline glass chime
+      else if (type === 'lock') {
+        const notes = [659.25, 987.77, 1318.5]; // E5, B5, E6 (pure harmonic triad)
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t);
+
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.exponentialRampToValueAtTime(0.04 / (idx + 1), t + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28 + idx * 0.04);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.35);
+        });
+      }
+      // 5. Scenario Switch — Ascending 3-note orbital arpeggio
+      else if (type === 'switch') {
+        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const noteStart = t + idx * 0.045;
+          osc.frequency.setValueAtTime(freq, noteStart);
+
+          gain.gain.setValueAtTime(0.0001, noteStart);
+          gain.gain.exponentialRampToValueAtTime(0.038, noteStart + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.14);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(noteStart);
+          osc.stop(noteStart + 0.16);
+        });
+      }
+      // 6. Control / Toggle Mode — Warm organic marimba blip
+      else if (type === 'control') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(580, t);
+        osc.frequency.exponentialRampToValueAtTime(440, t + 0.08);
+
+        gain.gain.setValueAtTime(0.04, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.085);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.09);
+      }
+      // 7. Success / Export — Radiant 4-note celebration chime
+      else if (type === 'success') {
+        const notes = [587.33, 739.99, 880, 1174.66]; // D5, F#5, A5, D6
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const noteStart = t + idx * 0.05;
+          osc.frequency.setValueAtTime(freq, noteStart);
+
+          gain.gain.setValueAtTime(0.0001, noteStart);
+          gain.gain.exponentialRampToValueAtTime(0.045, noteStart + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.32);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(noteStart);
+          osc.stop(noteStart + 0.35);
+        });
+      }
+      // Default fallback
+      else {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, t);
+        osc.frequency.exponentialRampToValueAtTime(260, t + 0.04);
+        gain.gain.setValueAtTime(0.03, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.05);
       }
     } catch {
-      // Ignore audio restriction gracefully
+      // Graceful fallback if audio is restricted
     }
   },
 }));

@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head><title>Image Test</title></head>
+<body style="background:#060913;color:white;font-family:monospace;padding:20px">
+<h2>Image Load Test</h2>
+<div id="results"></div>
+<script>
+const paths = [
+  '/imagery/amazon-deforestation-before.jpg',
+  '/imagery/amazon-deforestation-after.jpg',
+  '/imagery/flood-impact-before.jpg',
+  '/imagery/wildfire-aftermath-before.jpg',
+];
+paths.forEach(p => {
+  const div = document.createElement('div');
+  div.style = 'margin:10px 0;display:flex;align-items:center;gap:10px';
+  const img = document.createElement('img');
+  img.src = p;
+  img.style = 'width:200px;height:120px;object-fit:cover;border:2px solid #333';
+  img.onload = () => { div.querySelector('span').textContent = '✅ LOADED: ' + p; div.querySelector('span').style.color = '#00FFA3'; };
+  img.onerror = () => { div.querySelector('span').textContent = '❌ FAILED: ' + p; div.querySelector('span').style.color = '#ff4444'; };
+  const span = document.createElement('span');
+  span.textContent = '⏳ Loading: ' + p;
+  div.appendChild(img);
+  div.appendChild(span);
+  document.getElementById('results').appendChild(div);
+});
+</script>
+</body>
+</html>

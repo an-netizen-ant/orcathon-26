@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Crosshair, ShieldCheck, Eye } from 'lucide-react';
+import { REAL_IMAGERY } from '../constants/imagery';
 
 /**
  * MicroCropPreview Component
@@ -55,6 +56,18 @@ export function MicroCropPreview({ anomaly, scenario, isControlMode, spectralMod
     ? 'text-red-400 bg-red-950/60 border-red-500/40'
     : 'text-telemetry-cyan bg-cyan-950/60 border-cyan-500/40';
 
+  let imgFilter = 'none';
+  if (spectralMode === 'cir') {
+    imgFilter = 'hue-rotate(185deg) saturate(2.4) contrast(1.2)';
+  } else if (spectralMode === 'ndvi') {
+    imgFilter = 'hue-rotate(90deg) saturate(2.5) contrast(1.35)';
+  } else if (spectralMode === 'diff') {
+    imgFilter = 'contrast(1.6) saturate(0.2) brightness(0.9)';
+  }
+  const [cropImgError, setCropImgError] = useState(false);
+  const realImgSrc = REAL_IMAGERY[scenario.id]?.after;
+  const hasRaster = !cropImgError && Boolean(realImgSrc);
+
   return (
     <div className="relative w-full rounded-xl bg-space-950/90 border border-cyan-500/30 overflow-hidden shadow-cockpit">
       {/* Micro-Crop Header Telemetry Bar */}
@@ -79,8 +92,22 @@ export function MicroCropPreview({ anomaly, scenario, isControlMode, spectralMod
           className="w-full h-full object-cover"
           preserveAspectRatio="xMidYMid slice"
         >
-          {/* Base scene rendering based on scenario */}
-          {scenario.id === 'amazon' && (
+          {/* Real satellite image crop if available */}
+          {hasRaster ? (
+            <image
+              href={realImgSrc}
+              xlinkHref={realImgSrc}
+              x="0"
+              y="0"
+              width="1000"
+              height="650"
+              preserveAspectRatio="none"
+              style={{ filter: imgFilter }}
+              onError={() => setCropImgError(true)}
+            />
+          ) : (
+            <>
+              {scenario.id === 'amazon' && (
             <g>
               <rect width="1000" height="650" fill={spectralMode === 'cir' ? '#881337' : '#14381e'} />
               {/* Roads and deforestation cuts */}
@@ -142,6 +169,92 @@ export function MicroCropPreview({ anomaly, scenario, isControlMode, spectralMod
                 fill="#22d3ee"
               />
             </g>
+          )}
+
+          {scenario.id === 'flood' && (
+            <g>
+              <rect width="1000" height="650" fill={spectralMode === 'cir' ? '#064e3b' : '#78350f'} opacity="0.85" />
+              {[200, 400, 600, 800].map((x) => (
+                <line key={`f-x-${x}`} x1={x} y1="0" x2={x} y2="650" stroke="#854d0e" strokeWidth="2" opacity="0.4" />
+              ))}
+              {[160, 320, 480].map((y) => (
+                <line key={`f-y-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke="#854d0e" strokeWidth="2" opacity="0.4" />
+              ))}
+              <path d="M 450,0 Q 530,280 480,450 T 520,650" stroke="#0284c7" strokeWidth="36" fill="none" />
+              <path
+                d="M 160,180 Q 380,120 620,190 T 880,320 T 750,560 T 320,580 T 140,360 Z"
+                fill={spectralMode === 'cir' ? '#0f172a' : '#0369a1'}
+                opacity="0.9"
+              />
+              <path
+                d="M 520,260 Q 680,240 820,380 T 640,490 Z"
+                fill={spectralMode === 'cir' ? '#1e293b' : '#0284c7'}
+                opacity="0.95"
+              />
+              <polygon points="560,290 640,270 660,330 570,335" fill="#38bdf8" />
+            </g>
+          )}
+
+          {scenario.id === 'wildfire' && (
+            <g>
+              <rect width="1000" height="650" fill={spectralMode === 'cir' ? '#881337' : '#14532d'} />
+              <path d="M 0,320 Q 320,380 640,290 T 1000,340" stroke="#0284c7" strokeWidth="20" fill="none" />
+              <path
+                d="M 220,160 Q 460,90 740,180 T 860,420 T 580,560 T 260,480 Z"
+                fill={spectralMode === 'cir' ? '#0f172a' : '#1c1917'}
+                stroke="#7f1d1d"
+                strokeWidth="4"
+              />
+              <ellipse cx="720" cy="220" rx="90" ry="60" fill={spectralMode === 'cir' ? '#1e293b' : '#292524'} stroke="#dc2626" strokeWidth="2" />
+              <circle cx="680" cy="210" r="14" fill="#f97316" opacity="0.6" />
+              <circle cx="740" cy="235" r="10" fill="#ef4444" opacity="0.7" />
+            </g>
+          )}
+
+          {scenario.id === 'coastal' && (
+            <g>
+              <rect width="1000" height="650" fill="#0f172a" />
+              <path d="M 480,0 Q 560,280 510,650 L 1000,650 L 1000,0 Z" fill={spectralMode === 'cir' ? '#020617' : '#075985'} />
+              <path d="M 0,0 L 480,0 Q 560,280 510,650 L 0,650 Z" fill={spectralMode === 'cir' ? '#9f1239' : '#15803d'} />
+              <path
+                d="M 460,140 Q 530,280 470,440 L 410,380 Q 460,260 410,180 Z"
+                fill="#78350f"
+                stroke="#b45309"
+                strokeWidth="2"
+              />
+              <path d="M 470,220 Q 580,310 500,420" stroke="#38bdf8" strokeWidth="14" fill="none" opacity="0.7" />
+            </g>
+          )}
+
+          {scenario.id === 'reservoir' && (
+            <g>
+              <rect width="1000" height="650" fill="#78350f" opacity="0.75" />
+              <rect width="1000" height="650" fill="#44403c" opacity="0.45" />
+              <path
+                d="M 180,140 Q 420,90 680,180 T 820,440 T 560,570 T 240,460 Z"
+                fill="#f8fafc"
+                stroke="#e2e8f0"
+                strokeWidth="3"
+              />
+              <path
+                d="M 280,240 Q 450,210 610,270 T 710,400 T 530,480 T 320,410 Z"
+                fill={spectralMode === 'cir' ? '#020617' : '#0284c7'}
+              />
+            </g>
+          )}
+
+          {scenario.id === 'mining' && (
+            <g>
+              <rect width="1000" height="650" fill="#57534e" />
+              <rect width="1000" height="650" fill="#44403c" opacity="0.5" />
+              <ellipse cx="380" cy="340" rx="240" ry="160" fill="#292524" stroke="#a8a29e" strokeWidth="4" />
+              <ellipse cx="380" cy="340" rx="190" ry="120" fill="none" stroke="#78716c" strokeWidth="2" />
+              <ellipse cx="380" cy="340" rx="120" ry="70" fill="none" stroke="#78716c" strokeWidth="2" />
+              <ellipse cx="380" cy="340" rx="60" ry="35" fill="#1c1917" />
+              <rect x="680" y="180" width="220" height="260" rx="12" fill={spectralMode === 'cir' ? '#0284c7' : '#64748b'} stroke="#475569" strokeWidth="3" />
+            </g>
+          )}
+            </>
           )}
 
           {/* Highlight Target Box Overlay on SVG */}

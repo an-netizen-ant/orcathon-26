@@ -1,6 +1,37 @@
-# Hackathon Rules
+# Hackathon Project Rules
+
+## Core Architecture & Stack
 - Stack: Vite + React + Tailwind CSS
-- Animation: GSAP + Lenis (@studio-freight/react-lenis)
+- Animation: GSAP (with ScrollTrigger) + Lenis (@studio-freight/react-lenis)
 - Motion & Icons: Framer Motion + Lucide Icons (lucide-react)
 - Logic Layer: Zustand (zustand), Zod (zod), Radash (radash)
 - Logic File: Keep core algorithms inside src/utils/logicEngine.js
+- Store File: Maintain client-side global state and seed data in src/store/useStore.js
+
+## Performance Guidelines
+- GPU Acceleration: ONLY animate `transform` and `opacity`.
+- React Lifecycle: Always wrap GSAP timelines inside `gsap.context()` inside `useLayoutEffect` to clean up on unmount.
+- Smooth Scroll Sync: Synchronize GSAP `ScrollTrigger.update()` with the Lenis RAF loop.
+
+# Official Hackathon Judging Criteria (100 Points Total)
+1. Functionality & Execution (25 pts):
+   - Zero runtime errors or broken UI states.
+   - Always pre-load realistic mock demo data in Zustand so features work out of the box upon page load.
+
+2. Innovation & Originality (20 pts):
+   - Highlight unique problem-solving features, dynamic workflows, and interactive tooltips/modals.
+
+3. Technical Implementation (20 pts):
+   - Keep business logic and data transformations strictly in `src/utils/logicEngine.js`.
+   - Maintain client-side global state and seed data in `src/store/useStore.js`.
+   - Use Zod schemas to validate inputs and data structures.
+
+4. UI/UX & Usability (15 pts):
+   - Deliver a modern dark-mode aesthetic using Tailwind CSS.
+   - Include crisp visual icons (`lucide-react`), smooth transitions (`framer-motion`), GSAP scroll effects, and Lenis smooth scrolling.
+
+5. Problem Relevance (10 pts):
+   - Strictly solve the target problem statement without unnecessary bloat.
+
+6. Presentation & Deliverables (10 pts):
+   - Clean README.md explaining architecture, setup, tools used, and AI disclosure.

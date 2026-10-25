@@ -1,0 +1,6 @@
+# Hackathon Rules
+- Stack: Vite + React + Tailwind CSS
+- Animation: GSAP + Lenis (@studio-freight/react-lenis)
+- Motion & Icons: Framer Motion + Lucide Icons (lucide-react)
+- Logic Layer: Zustand (zustand), Zod (zod), Radash (radash)
+- Logic File: Keep core algorithms inside src/utils/logicEngine.js
